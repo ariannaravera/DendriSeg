@@ -1,0 +1,57 @@
+name: DendriSeg
+display_name: DendriSeg
+# use 'hidden' to remove plugin from napari hub search results
+visibility: public
+# see https://napari.org/stable/plugins/manifest.html for valid categories
+categories: ["Annotation", "Segmentation", "Acquisition"]
+contributions:
+  commands:
+    - id: DendriSeg.get_reader
+      python_name: dendriseg._reader:napari_get_reader
+      title: Open data with DendriSeg
+    - id: DendriSeg.write_multiple
+      python_name: dendriseg._writer:write_multiple
+      title: Save multi-layer data with DendriSeg
+    - id: DendriSeg.write_single_image
+      python_name: dendriseg._writer:write_single_image
+      title: Save image data with DendriSeg
+    - id: DendriSeg.make_sample_data
+      python_name: dendriseg._sample_data:make_sample_data
+      title: Load sample data from DendriSeg
+    - id: DendriSeg.make_container_widget
+      python_name: dendriseg:ImageThreshold
+      title: Make threshold Container widget
+    - id: DendriSeg.make_magic_widget
+      python_name: dendriseg:threshold_magic_widget
+      title: Make threshold magic widget
+    - id: DendriSeg.make_function_widget
+      python_name: dendriseg:threshold_autogenerate_widget
+      title: Make threshold function widget
+    - id: DendriSeg.make_qwidget
+      python_name: dendriseg:ExampleQWidget
+      title: Make example QWidget
+  readers:
+    - command: DendriSeg.get_reader
+      accepts_directories: false
+      filename_patterns: ['*.npy']
+  writers:
+    - command: DendriSeg.write_multiple
+      layer_types: ['image*','labels*']
+      filename_extensions: []
+    - command: DendriSeg.write_single_image
+      layer_types: ['image']
+      filename_extensions: ['.npy']
+  sample_data:
+    - command: DendriSeg.make_sample_data
+      display_name: DendriSeg
+      key: unique_id.1
+  widgets:
+    - command: DendriSeg.make_container_widget
+      display_name: Container Threshold
+    - command: DendriSeg.make_magic_widget
+      display_name: Magic Threshold
+    - command: DendriSeg.make_function_widget
+      autogenerate: true
+      display_name: Autogenerate Threshold
+    - command: DendriSeg.make_qwidget
+      display_name: Example QWidget
