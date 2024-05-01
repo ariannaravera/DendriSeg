@@ -30,99 +30,197 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from magicgui import magic_factory
-from magicgui.widgets import CheckBox, Container, create_widget
+from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit
 from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
-from skimage.util import img_as_float
+import numpy as np
+from .functions import segment, crop, open_file, sholl_analysis
+import tifffile
+import cv2
 
 if TYPE_CHECKING:
     import napari
 
 
-# Uses the `autogenerate: true` flag in the plugin manifest
-# to indicate it should be wrapped as a magicgui to autogenerate
-# a widget.
-def threshold_autogenerate_widget(
-    img: "napari.types.ImageData",
-    threshold: "float", 
-) -> "napari.types.LabelsData":
-    return img_as_float(img) > threshold
-
-
-# the magic_factory decorator lets us customize aspects of our widget
-# we specify a widget type for the threshold parameter
-# and use auto_call=True so the function is called whenever
-# the value of a parameter changes
-@magic_factory(
-    threshold={"widget_type": "FloatSlider", "max": 1}, auto_call=True
-)
-def threshold_magic_widget(
-    img_layer: "napari.layers.Image", threshold: "float"
-) -> "napari.types.LabelsData":
-    return img_as_float(img_layer.data) > threshold
-
-
-# if we want even more control over our widget, we can use
-# magicgui `Container`
-class ImageThreshold(Container):
+class ImageSegmentation(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._viewer = viewer
-        # use create_widget to generate widgets from type annotations
+        # Select image layer
         self._image_layer_combo = create_widget(
             label="Image", annotation="napari.layers.Image"
         )
-        self._threshold_slider = create_widget(
-            label="Threshold", annotation=float, widget_type="FloatSlider"
-        )
-        self._threshold_slider.min = 0
-        self._threshold_slider.max = 1
-        # use magicgui widgets directly
-        self._invert_checkbox = CheckBox(text="Keep pixels below threshold")
-
-        # connect your own callbacks
-        self._threshold_slider.changed.connect(self._threshold_im)
-        self._invert_checkbox.changed.connect(self._threshold_im)
+        # Button to segment image layer selected
+        self.segment_btn = PushButton(value=True, text='Segment')
+        self.segment_btn.clicked.connect(self._on_click_segment)
+        # Button to save mask layer created
+        self.save_btn = PushButton(value=True, text='Save')
+        self.save_btn.clicked.connect(self._on_click_save)
 
         # append into/extend the container with your widgets
         self.extend(
             [
                 self._image_layer_combo,
-                self._threshold_slider,
-                self._invert_checkbox,
+                self.segment_btn,
+                self.save_btn
             ]
         )
 
-    def _threshold_im(self):
+    def _on_click_segment(self):
         image_layer = self._image_layer_combo.value
         if image_layer is None:
+            print("Select image layer before segmenting")
             return
 
-        image = img_as_float(image_layer.data)
-        name = image_layer.name + "_thresholded"
-        threshold = self._threshold_slider.value
-        if self._invert_checkbox.value:
-            thresholded = image < threshold
-        else:
-            thresholded = image > threshold
-        if name in self._viewer.layers:
-            self._viewer.layers[name].data = thresholded
-        else:
-            self._viewer.add_labels(thresholded, name=name)
+        image = np.asarray(image_layer.data)
+        name = image_layer.name + "_mask"
+        self.mask = segment(image)
+        if self.mask is not None:
+            if name in self._viewer.layers:
+                self._viewer.layers[name].data = self.mask
+            else:
+                self._viewer.add_labels(self.mask, name=name)
+    
+    def _on_click_save(self):
+        image_layer = self._image_layer_combo.value
+        if image_layer is None:
+            print("Select image layer before segmenting")
+            return
+        if self.mask is None:
+            print("Mask not found")
+            return
+        tifffile.imwrite(image_layer.source.path.split('.')[0]+"_mask.tif", self.mask)
 
 
-class ExampleQWidget(QWidget):
-    # your QWidget.__init__ can optionally request the napari viewer instance
-    # use a type annotation of 'napari.viewer.Viewer' for any parameter
+class ROIsdivision(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
-        self.viewer = viewer
+        self._viewer = viewer
 
-        btn = QPushButton("Click me!")
-        btn.clicked.connect(self._on_click)
+        # Button to create Shape layer
+        self.btn_create = PushButton(value=True, text='Create ROIs layer')
+        self.btn_create.clicked.connect(self._on_click_create)
 
-        self.setLayout(QHBoxLayout())
-        self.layout().addWidget(btn)
+        # Select Shape and image layers
+        self._image_layer_combo = create_widget(
+            label="Image", annotation="napari.layers.Image"
+        )
+        self._mask_layer_combo = create_widget(
+            label="Mask", annotation="napari.layers.Labels"
+        )
+        self._shape_layer_combo = create_widget(
+            label="roi layer", annotation="napari.layers.Shapes"
+        )
+        # Button to crop rois drawn
+        self.btn_crop = PushButton(value=True, text='Crop')
+        self.btn_crop.clicked.connect(self._on_click_crop)
 
-    def _on_click(self):
-        print("napari has", len(self.viewer.layers), "layers")
+        # Button to close all the data in napari to then manually open each cropped file
+        #self.btn_close = PushButton(value=True, text='Close All')
+        #self.btn_close.clicked.connect(self._on_click_close)
+
+        # append into/extend the container with your widgets
+        self.extend(
+            [
+                self.btn_create,
+                self._image_layer_combo,
+                self._mask_layer_combo,
+                self._shape_layer_combo,
+                self.btn_crop,
+                #self.btn_close
+            ]
+        )
+
+    def _on_click_create(self):
+        self._viewer.add_shapes(name="ROIs")
+    
+    def _on_click_crop(self):
+        roi_layer = self._shape_layer_combo.value
+        mask_layer = self._mask_layer_combo.value
+        image_layer = self._image_layer_combo.value
+        if image_layer is None or mask_layer is None or roi_layer is None:
+            print("Select roi, mask and image layers before cropping")
+            return
+        image = np.asarray(image_layer.data)
+        mask = np.asarray(mask_layer.data)
+        roi_image = roi_layer.to_labels(image.shape)
+        roi_ids = list(np.unique(roi_image))
+        roi_ids.remove(0)
+        print("Cropping the "+str(len(roi_ids))+" ROI area(s) drawn")
+
+        image_path = image_layer.source.path
+        output_path = image_path.split('.')[0]
+        
+        crop(image, mask, roi_ids, roi_image, output_path)
+
+
+class ShollAnalysis(Container):
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__()
+        self._viewer = viewer
+
+        self.label1 = Label(value='Step 1: open the cropped image')
+        # Select file
+        self.file_layer = FileEdit(value='')
+        # Button to convert file into image and mask layer
+        self.btn_openfile = PushButton(value=True, text='Open')
+        self.btn_openfile.clicked.connect(self._on_click_openfile)
+
+        self.label2 = Label(value='Step 2: manually clean the mask')
+
+        self.label3 = Label(value='Step 3: point in the shape layer the neuron center')
+        # Button to create Shape layer
+        self.btn_center = PushButton(value=True, text='Create ROIs layer')
+        self.btn_center.clicked.connect(self._on_click_centerlayer)
+
+        self.label4 = Label(value='Step 4: perform Sholl Analysis')
+        # Button to create Shape layer
+        self.btn_sholl = PushButton(value=True, text='Perform')
+        self.btn_sholl.clicked.connect(self._on_click_sholl)
+
+        """# Select Shape and image layers
+        self._image_layer_combo = create_widget(
+            label="Image", annotation="napari.layers.Image"
+        )
+        self._mask_layer_combo = create_widget(
+            label="Mask", annotation="napari.layers.Labels"
+        )
+        # Button to crop rois drawn
+        self.btn_crop = PushButton(value=True, text='Crop')
+        self.btn_crop.clicked.connect(self._on_click_crop)"""
+
+        # append into/extend the container with your widgets
+        self.extend(
+            [
+                self.label1,
+                self.file_layer,
+                self.btn_openfile,
+                self.label2,
+                self.label3,
+                self.btn_center,
+                self.label4,
+                self.btn_sholl
+            ]
+        )
+
+    def _on_click_openfile(self):
+        self.file_path = self.file_layer.value
+        name, image, mask = open_file(str(self.file_path))
+        self.image_name = name.split('_image_crop')[0]
+        mask_name = self.image_name+'_mask'
+        self._viewer.add_image(image, name=self.image_name)
+        self._viewer.add_labels(mask.astype('uint8'), name=mask_name)
+        self.image_layer = self._viewer.layers[self.image_name]
+        self.mask_layer = self._viewer.layers[mask_name]
+    
+    def _on_click_centerlayer(self):
+        self.center_layer = self._viewer.add_shapes(name="Neuron center")
+    
+    def _on_click_sholl(self):
+        center_layer = self.center_layer
+        image_layer = self.image_layer
+        mask_layer = self.mask_layer
+        if image_layer is None or mask_layer is None or center_layer is None:
+            print("Set correctly all the layers before performing the analysis")
+            return
+        center = center_layer.to_labels(image_layer.data.shape)
+        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data)

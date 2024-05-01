@@ -18,18 +18,16 @@ contributions:
     - id: DendriSeg.make_sample_data
       python_name: dendriseg._sample_data:make_sample_data
       title: Load sample data from DendriSeg
-    - id: DendriSeg.make_container_widget
-      python_name: dendriseg:ImageThreshold
-      title: Make threshold Container widget
-    - id: DendriSeg.make_magic_widget
-      python_name: dendriseg:threshold_magic_widget
-      title: Make threshold magic widget
-    - id: DendriSeg.make_function_widget
-      python_name: dendriseg:threshold_autogenerate_widget
-      title: Make threshold function widget
-    - id: DendriSeg.make_qwidget
-      python_name: dendriseg:ExampleQWidget
-      title: Make example QWidget
+    - id: DendriSeg.make_segmentation_widget
+      python_name: dendriseg:ImageSegmentation
+      title: Make segmentation Container widget
+    - id: DendriSeg.make_roidivision_widget
+      python_name: dendriseg:ROIsdivision
+      title: Crop ROIs area Container widget
+    - id: DendriSeg.make_shollanalysis_widget
+      python_name: dendriseg:ShollAnalysis
+      title: Analyse image with Sholl analysis
+
   readers:
     - command: DendriSeg.get_reader
       accepts_directories: false
@@ -46,12 +44,9 @@ contributions:
       display_name: DendriSeg
       key: unique_id.1
   widgets:
-    - command: DendriSeg.make_container_widget
-      display_name: Container Threshold
-    - command: DendriSeg.make_magic_widget
-      display_name: Magic Threshold
-    - command: DendriSeg.make_function_widget
-      autogenerate: true
-      display_name: Autogenerate Threshold
-    - command: DendriSeg.make_qwidget
-      display_name: Example QWidget
+    - command: DendriSeg.make_segmentation_widget
+      display_name: Segmentation
+    - command: DendriSeg.make_roidivision_widget
+      display_name: ROIs division
+    - command: DendriSeg.make_shollanalysis_widget
+      display_name: Sholl Analysis
