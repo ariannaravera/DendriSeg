@@ -1,4 +1,3 @@
-from skimage.io import imread
 import pyclesperanto_prototype as cle  # version 0.24.1
 import napari_segment_blobs_and_things_with_membranes as nsbatwm  # version 0.3.4
 import napari_simpleitk_image_processing as nsitk
@@ -8,9 +7,7 @@ import os
 import cv2
 import numpy as np
 import tifffile
-from cellpose import utils
 from skimage import morphology
-import time
 
 data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
 res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
