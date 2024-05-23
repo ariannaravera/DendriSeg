@@ -10,15 +10,18 @@ import numpy as np
 import tifffile
 from cellpose import utils
 from skimage import morphology
+import time
 
-data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data"
-res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results"
+data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
+res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
 
 def workflowneu2(image):
     # median filter
     image_M = nsitk.median_filter(image, 1, 1, 0)
     # threshold otsu
     image_T1 = nsitk.threshold_otsu(image_M)
+    #_, th1 = cv2.threshold(image,127,255,cv2.THRESH_BINARY)
+    th = cv2.erode(image_T1, np.ones((5, 5), np.uint8), iterations=1) 
     # laplacian of gaussian
     image_L = ncle._napari_cle_functions.laplacian_of_gaussian(image_M, 0.0, 0.0, 0.0)
     # gaussian blur
@@ -30,18 +33,16 @@ def workflowneu2(image):
     # threshold huang
     image_T2 = nsitk.threshold_huang(image_C)
 
-    image_T1M = cv2.medianBlur(image_T1,3)
+    """image_T1M = cv2.medianBlur(image_T1,3)
     image_T1MC = cv2.morphologyEx(image_T1M, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
     image_T1MCO = morphology.area_opening(image_T1MC, area_threshold=5, connectivity=3)
-    image_T1MCOO = morphology.area_opening(image_T1MCO, area_threshold=15, connectivity=6)
+    image_T1MCOO = morphology.area_opening(image_T1MCO, area_threshold=15, connectivity=6)"""
 
-    
     image_T2C = cv2.morphologyEx(image_T2, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
     image_T2CM = cv2.medianBlur(image_T2C,3)
     image_T2MCO = morphology.area_opening(image_T2CM, area_threshold=5, connectivity=3)
-    image_T2MCOO = morphology.area_opening(image_T2MCO, area_threshold=15, connectivity=6)
 
-    image_th = image_T1MCOO+image_T2MCO
+    image_th = th+image_T2MCO
     image_th[image_th>0] = 255
     median = cv2.medianBlur(image_th,3)
 
@@ -54,7 +55,7 @@ def segment(image):
         # Percentile filter
         filtered = nsbatwm.percentile_filter(blur, 0.0, 0.5)
 
-        # Find neuron center
+        """# Find neuron center
         center_filtered = filtered.copy().astype('uint8')
         center_filtered[center_filtered < 250] = 0
         center_filtered[center_filtered != 0] = 1
@@ -70,14 +71,16 @@ def segment(image):
             if pixels > max_area:
                 max_area = pixels
                 max_x = np.average([x, x+w])
-                max_y = np.average([y, y+h])
+                max_y = np.average([y, y+h])"""
 
         # Contrast when needed
         if np.average(filtered) < 20:
             filtered = cv2.convertScaleAbs(filtered, alpha=2, beta=0) #alpha=contrast
             filtered[filtered > 255] = 255
         filtered = filtered.astype('uint8')
+        
         mask = workflowneu2(filtered)
+
         return mask
     except:
         return None
@@ -140,3 +143,8 @@ def sholl_analysis(output_path, name, center, image, mask):
     plt.savefig(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name.replace(".tif", ".png")), dpi=300, bbox_inches='tight', pad_inches=0)
     #plt.show()
     plt.close()
+
+if __name__ == "__main__":
+    img = tifffile.imread(data_path)
+    mask = segment(img)
+    tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)
