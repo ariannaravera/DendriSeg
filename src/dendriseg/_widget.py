@@ -30,10 +30,11 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit
-from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
+from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit
+from qtpy.QtWidgets import QFileDialog, QFrame
+import os
 import numpy as np
-from .functions import segment, crop, open_file, sholl_analysis
+from .functions import open_lif, segment, crop, open_file, sholl_analysis
 import tifffile
 import cv2
 
@@ -41,30 +42,119 @@ if TYPE_CHECKING:
     import napari
 
 
+class LifReader(Container):
+    def __init__(self, viewer: "napari.viewer.Viewer"):
+        super().__init__()
+        self._viewer = viewer
+        # Browse segmentation mask
+        self.file_path = LineEdit(label="Input file")
+        self.browse_btn = PushButton(value=True, text='Browse')
+        self.browse_btn.clicked.connect(self._add_file)
+        # Define output directory
+        self.saving_dir = LineEdit(label="Output folder")
+        self.browse1_btn = PushButton(value=True, text='Browse')
+        self.browse1_btn.clicked.connect(self._add_folder)
+        # Button to read lif image
+        self.read_btn = PushButton(value=True, text='Read lif file')
+        self.read_btn.clicked.connect(self._on_click_read)
+       
+        # Append into/extend the container with your widgets
+        self.extend(
+            [
+                self.file_path,
+                self.browse_btn,
+                self.saving_dir,
+                self.browse1_btn,
+                self.read_btn
+            ]
+        )
+
+    def _add_file(self):
+        # Add the selected mask as input
+        self.file_path.value, _ = QFileDialog.getOpenFileName(filter='*.lif')
+    
+    def _add_folder(self):
+        # Add the selected mask as input
+        self.saving_dir.value = QFileDialog.getExistingDirectory()
+
+    def _on_click_read(self):
+        file_path = self.file_path.value
+        saving_dir  = self.saving_dir.value
+        if file_path is None:
+            print("Select a valid lif file")
+            return
+        open_lif(file_path, saving_dir)
+
+
 class ImageSegmentation(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._viewer = viewer
-        # Select image layer
+        self.label1 = Label(value='Step 1: Open your tif image')
+        self.label2 = Label(value='Step 2: Define the output folder')
+        # Define output directory
+        self.saving_dir = LineEdit(label="Output folder")
+        self.browse_btn = PushButton(value=True, text='Browse')
+        self.browse_btn.clicked.connect(self._add_folder)
+
+        # Button to segment image layer selected
+        self.label3 = Label(value='Step 3: Perform segmentation')
+        # Select Shape and image layers
         self._image_layer_combo = create_widget(
             label="Image", annotation="napari.layers.Image"
         )
-        # Button to segment image layer selected
         self.segment_btn = PushButton(value=True, text='Segment')
         self.segment_btn.clicked.connect(self._on_click_segment)
         # Button to save mask layer created
-        self.save_btn = PushButton(value=True, text='Save')
+        self.save_btn = PushButton(value=True, text='Save mask')
         self.save_btn.clicked.connect(self._on_click_save)
 
-        # append into/extend the container with your widgets
+        # Button to create Shape layer
+        self.label4 = Label(value='Step 4: Create your ROIs')
+        self.btn_create = PushButton(value=True, text='Create ROIs layer')
+        self.btn_create.clicked.connect(self._on_click_create)
+        # Button to add ellipse to Shape layer
+        self.btn_add = PushButton(value=True, text='Add ROI')
+        self.btn_add.clicked.connect(self._on_click_add)
+
+        self.label5 = Label(value='Step 5: Crop and save the ROIs areas')
+
+        # Select Shape and image layers
+        self._image_layer_combo1 = create_widget(
+            label="Image", annotation="napari.layers.Image"
+        )
+        self._mask_layer_combo = create_widget(
+            label="Mask", annotation="napari.layers.Labels"
+        )
+        self._shape_layer_combo = create_widget(
+            label="ROI", annotation="napari.layers.Shapes"
+        )
+        # Button to crop rois drawn
+        self.btn_crop = PushButton(value=True, text='Crop and Save')
+        self.btn_crop.clicked.connect(self._on_click_crop)
+
+        # Append into/extend the container with your widgets
         self.extend(
             [
+                self.label1,
+                self.label2,
+                self.saving_dir,
+                self.browse_btn,
+                self.label3,
                 self._image_layer_combo,
                 self.segment_btn,
-                self.save_btn
+                self.save_btn,
+                self.label4,
+                self.btn_create,
+                self.btn_add,
+                self.label5,
+                self._image_layer_combo1,
+                self._mask_layer_combo,
+                self._shape_layer_combo,
+                self.btn_crop
             ]
         )
-
+    
     def _on_click_segment(self):
         image_layer = self._image_layer_combo.value
         if image_layer is None:
@@ -88,55 +178,30 @@ class ImageSegmentation(Container):
         if self.mask is None:
             print("Mask not found")
             return
-        tifffile.imwrite(image_layer.source.path.split('.')[0]+"_mask.tif", self.mask)
+        if self.saving_dir.value != '':
+            output_path = self.saving_dir.value
+        else:
+            output_path = os.path.dirname(image_layer.source.path)
+        tifffile.imwrite(os.path.join(output_path, os.path.splitext(os.path.basename(image_layer.source.path))[0]+"_mask.tif"), self.mask)
+            
 
 
-class ROIsdivision(Container):
-    def __init__(self, viewer: "napari.viewer.Viewer"):
-        super().__init__()
-        self._viewer = viewer
-
-        # Button to create Shape layer
-        self.btn_create = PushButton(value=True, text='Create ROIs layer')
-        self.btn_create.clicked.connect(self._on_click_create)
-
-        # Select Shape and image layers
-        self._image_layer_combo = create_widget(
-            label="Image", annotation="napari.layers.Image"
-        )
-        self._mask_layer_combo = create_widget(
-            label="Mask", annotation="napari.layers.Labels"
-        )
-        self._shape_layer_combo = create_widget(
-            label="roi layer", annotation="napari.layers.Shapes"
-        )
-        # Button to crop rois drawn
-        self.btn_crop = PushButton(value=True, text='Crop')
-        self.btn_crop.clicked.connect(self._on_click_crop)
-
-        # Button to close all the data in napari to then manually open each cropped file
-        #self.btn_close = PushButton(value=True, text='Close All')
-        #self.btn_close.clicked.connect(self._on_click_close)
-
-        # append into/extend the container with your widgets
-        self.extend(
-            [
-                self.btn_create,
-                self._image_layer_combo,
-                self._mask_layer_combo,
-                self._shape_layer_combo,
-                self.btn_crop,
-                #self.btn_close
-            ]
-        )
-
+    def _add_folder(self):
+        # Add the selected mask as input
+        self.saving_dir.value = QFileDialog.getExistingDirectory()
+        
     def _on_click_create(self):
-        self._viewer.add_shapes(name="ROIs")
+        self.shapes_layer = self._viewer.add_shapes(name="ROIs")
+        self._on_click_add()
+    
+    def _on_click_add(self):
+        ellipse = np.array([[100, 100], [100, 100]])
+        self.shapes_layer.add_ellipses(ellipse, edge_width=5,edge_color='coral', face_color='royalblue')
     
     def _on_click_crop(self):
         roi_layer = self._shape_layer_combo.value
         mask_layer = self._mask_layer_combo.value
-        image_layer = self._image_layer_combo.value
+        image_layer = self._image_layer_combo1.value
         if image_layer is None or mask_layer is None or roi_layer is None:
             print("Select roi, mask and image layers before cropping")
             return
@@ -148,9 +213,13 @@ class ROIsdivision(Container):
         print("Cropping the "+str(len(roi_ids))+" ROI area(s) drawn")
 
         image_path = image_layer.source.path
-        output_path = image_path.split('.')[0]
+        image_name = os.path.splitext(os.path.basename(image_path))[0]
+        if self.saving_dir.value != '':
+            output_path = self.saving_dir.value
+        else:
+            output_path = os.path.dirname(image_path)
         
-        crop(image, mask, roi_ids, roi_image, output_path)
+        crop(image, mask, roi_ids, roi_image, output_path, image_name)
 
 
 class ShollAnalysis(Container):
@@ -158,23 +227,25 @@ class ShollAnalysis(Container):
         super().__init__()
         self._viewer = viewer
 
-        self.label1 = Label(value='Step 1: open the cropped image')
+        self.label1 = Label(value='Step 1: Open the cropped image')
         # Select file
         self.file_layer = FileEdit(value='')
         # Button to convert file into image and mask layer
         self.btn_openfile = PushButton(value=True, text='Open')
         self.btn_openfile.clicked.connect(self._on_click_openfile)
 
-        self.label2 = Label(value='Step 2: manually clean the mask')
+        self.label2 = Label(value='Step 2: Manually clean the mask')
 
-        self.label3 = Label(value='Step 3: point in the shape layer the neuron center')
+        self.label3 = Label(value='Step 3: Create shape layer with a dot')
         # Button to create Shape layer
-        self.btn_center = PushButton(value=True, text='Create ROIs layer')
+        self.btn_center = PushButton(value=True, text='Create "Neuron center" layer')
         self.btn_center.clicked.connect(self._on_click_centerlayer)
 
-        self.label4 = Label(value='Step 4: perform Sholl Analysis')
+        self.label3 = Label(value='Step 4: Move the dot over the neuron center')
+
+        self.label4 = Label(value='Step 5: perform Sholl Analysis')
         # Button to create Shape layer
-        self.btn_sholl = PushButton(value=True, text='Perform')
+        self.btn_sholl = PushButton(value=True, text='Perform analysis')
         self.btn_sholl.clicked.connect(self._on_click_sholl)
 
         """# Select Shape and image layers
@@ -214,7 +285,10 @@ class ShollAnalysis(Container):
     
     def _on_click_centerlayer(self):
         self.center_layer = self._viewer.add_shapes(name="Neuron center")
-    
+        ellipse = np.array([[2, 2], [2, 2]])
+        self.center_layer.add_ellipses(ellipse, edge_width=1, edge_color='royalblue', face_color='blue')
+        
+
     def _on_click_sholl(self):
         center_layer = self.center_layer
         image_layer = self.image_layer

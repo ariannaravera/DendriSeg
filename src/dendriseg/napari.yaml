@@ -3,7 +3,7 @@ display_name: DendriSeg
 # use 'hidden' to remove plugin from napari hub search results
 visibility: public
 # see https://napari.org/stable/plugins/manifest.html for valid categories
-categories: ["Annotation", "Segmentation", "Acquisition"]
+categories: ["Annotation", "Segmentation"]
 contributions:
   commands:
     - id: DendriSeg.get_reader
@@ -18,12 +18,12 @@ contributions:
     - id: DendriSeg.make_sample_data
       python_name: dendriseg._sample_data:make_sample_data
       title: Load sample data from DendriSeg
+    - id: DendriSeg.make_lifreader_widget
+      python_name: dendriseg:LifReader
+      title: Make lif file reader Container widget
     - id: DendriSeg.make_segmentation_widget
       python_name: dendriseg:ImageSegmentation
       title: Make segmentation Container widget
-    - id: DendriSeg.make_roidivision_widget
-      python_name: dendriseg:ROIsdivision
-      title: Crop ROIs area Container widget
     - id: DendriSeg.make_shollanalysis_widget
       python_name: dendriseg:ShollAnalysis
       title: Analyse image with Sholl analysis
@@ -44,9 +44,9 @@ contributions:
       display_name: DendriSeg
       key: unique_id.1
   widgets:
+    - command: DendriSeg.make_lifreader_widget
+      display_name: Lif File Reader
     - command: DendriSeg.make_segmentation_widget
       display_name: Segmentation
-    - command: DendriSeg.make_roidivision_widget
-      display_name: ROIs division
     - command: DendriSeg.make_shollanalysis_widget
       display_name: Sholl Analysis

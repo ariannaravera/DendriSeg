@@ -8,9 +8,25 @@ import cv2
 import numpy as np
 import tifffile
 from skimage import morphology
+from readlif.reader import LifFile
 
 data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
 res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
+
+
+def open_lif(file_path, saving_dir):
+    if not os.path.isfile(file_path):
+        print(f"File '{file_path}' not found.")
+    else:
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        lif_file = LifFile(file_path)
+        for i, img in enumerate(lif_file.get_iter_image()):
+            for c in range(img.info['channels']):
+                image_z = np.zeros((img.info['dims'].x, img.info['dims'].y, img.info['dims'].z))
+                for z in range(img.info['dims'].z):
+                    image_z[:,:,z] = img.get_frame(z=int(z), t=0, c=int(c))
+                tifffile.imwrite(os.path.join(saving_dir, file_name+'_img'+str(i+1)+'_ch'+str(c)+'.tif'), np.max(image_z, axis=2).astype('uint16'), imagej=True)
+
 
 def workflowneu2(image):
     # median filter
@@ -40,7 +56,7 @@ def workflowneu2(image):
     image_T2MCO = morphology.area_opening(image_T2CM, area_threshold=5, connectivity=3)
 
     image_th = th+image_T2MCO
-    image_th[image_th>0] = 255
+    image_th[image_th>0] = 1
     median = cv2.medianBlur(image_th,3)
 
     return median
@@ -82,7 +98,7 @@ def segment(image):
     except:
         return None
 
-def crop(image, image_mask, roi_ids, roi_image, output_path):
+def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
     cropped_areas = []
     for roi_id in roi_ids:
         roi_mask = np.zeros(image.shape, dtype=np.uint8)
@@ -99,15 +115,16 @@ def crop(image, image_mask, roi_ids, roi_image, output_path):
         cropped_area[1] = cropped_image_mask
         cropped_area[2] = cropped_roi_mask
         cropped_areas.append(cropped_area)
-        tifffile.imwrite(output_path+'_image_crop'+str(roi_id)+'.tif', cropped_area)
+        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area)
     return
+
 
 def open_file(file_path):
     if not os.path.exists(file_path):
         print("ERROR! File not found.")
         return
     if '.tif' not in file_path:
-        print("ERROR! File mush have TIF extention.")
+        print("ERROR! File must have TIF extention.")
         return
     try:
         name = os.path.basename(file_path).split('.')[0]
@@ -116,6 +133,7 @@ def open_file(file_path):
     except Exception as e:
         print("ERROR!\n"+str(e))
         return
+
 
 def sholl_analysis(output_path, name, center, image, mask):
     if len(list(np.unique(center))) != 2:
@@ -128,6 +146,10 @@ def sholl_analysis(output_path, name, center, image, mask):
     cent_y = int(np.average(mass_y))
     
     radius = np.arange(1, int(image.shape[0]), 50)
+
+    # radius = 10um x 10 times -> we need to scale um to pixel and then we define the range: from 10 to 200 (it is enough for all the images) with step 10
+    radius = np.arange(int(3.52*10), int(3.52*200), int(3.52*10))
+    
     # Add the sholl circles
     for rad in radius:
         cv2.circle(image, center=(cent_y, cent_x), radius=rad, color=(255,215,0), thickness=1)
@@ -141,7 +163,10 @@ def sholl_analysis(output_path, name, center, image, mask):
     #plt.show()
     plt.close()
 
+
+
 if __name__ == "__main__":
-    img = tifffile.imread(data_path)
+    """img = tifffile.imread(data_path)
     mask = segment(img)
-    tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)
+    tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)"""
+    open_lif('/Users/aravera/Documents/DNF_Bagni/Giorgia/data/new_data/40x WT GFP DIV8 210524.lif', '')
