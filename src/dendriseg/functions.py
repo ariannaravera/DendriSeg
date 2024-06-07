@@ -9,6 +9,10 @@ import numpy as np
 import tifffile
 from skimage import morphology
 from readlif.reader import LifFile
+from PyQt5.QtWidgets import QMessageBox
+from mycolorpy import colorlist as mcp
+from PIL import ImageColor
+import csv
 
 data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
 res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
@@ -21,11 +25,18 @@ def open_lif(file_path, saving_dir):
         file_name = os.path.splitext(os.path.basename(file_path))[0]
         lif_file = LifFile(file_path)
         for i, img in enumerate(lif_file.get_iter_image()):
+            scale = img.info['scale'][0]
             for c in range(img.info['channels']):
                 image_z = np.zeros((img.info['dims'].x, img.info['dims'].y, img.info['dims'].z))
                 for z in range(img.info['dims'].z):
                     image_z[:,:,z] = img.get_frame(z=int(z), t=0, c=int(c))
-                tifffile.imwrite(os.path.join(saving_dir, file_name+'_img'+str(i+1)+'_ch'+str(c)+'.tif'), np.max(image_z, axis=2).astype('uint16'), imagej=True)
+                tifffile.imwrite(os.path.join(saving_dir, file_name+'_img'+str(i+1)+'_ch'+str(c)+'_scale='+str(round(scale,2)).replace('.','+')+'.tif'), np.max(image_z, axis=2).astype('uint16'), imagej=True)
+        print('Files saved in '+saving_dir)
+        msg = QMessageBox() 
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("Finished!")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.exec_() 
 
 
 def workflowneu2(image):
@@ -61,6 +72,7 @@ def workflowneu2(image):
 
     return median
 
+
 def segment(image):
     try:
         # Gaussian blur
@@ -93,13 +105,20 @@ def segment(image):
         filtered = filtered.astype('uint8')
         
         mask = workflowneu2(filtered)
+        msg = QMessageBox() 
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("Mask created!")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.exec_() 
 
         return mask
     except:
         return None
 
-def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
+
+def crop(image, image_mask, roi_ids, roi_image, output_path, image_name, scale):
     cropped_areas = []
+    print("Cropping the "+str(len(roi_ids))+" ROIs drawn in "+output_path)
     for roi_id in roi_ids:
         roi_mask = np.zeros(image.shape, dtype=np.uint8)
         roi_mask[roi_image == roi_id] = 1
@@ -116,6 +135,11 @@ def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
         cropped_area[2] = cropped_roi_mask
         cropped_areas.append(cropped_area)
         tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area)
+    msg = QMessageBox() 
+    msg.setIcon(QMessageBox.Information)
+    msg.setText("ROIs cropped and saved!")
+    msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+    msg.exec_() 
     return
 
 
@@ -135,7 +159,7 @@ def open_file(file_path):
         return
 
 
-def sholl_analysis(output_path, name, center, image, mask):
+def sholl_analysis(output_path, name, center, image, mask, scale):
     if len(list(np.unique(center))) != 2:
         print('WARNING! Select only one center')
         return
@@ -144,24 +168,48 @@ def sholl_analysis(output_path, name, center, image, mask):
     mass_x, mass_y = np.where(center == 255)
     cent_x = int(np.average(mass_x))
     cent_y = int(np.average(mass_y))
-    
-    radius = np.arange(1, int(image.shape[0]), 50)
 
     # radius = 10um x 10 times -> we need to scale um to pixel and then we define the range: from 10 to 200 (it is enough for all the images) with step 10
-    radius = np.arange(int(3.52*10), int(3.52*200), int(3.52*10))
-    
+    radius = np.arange(int(scale*10), int(scale*100), int(scale*10))
+    image3D = np.zeros((image.shape[0], image.shape[1],3))
+    image3D[:,:,0] = image
+    image3D[:,:,1] = image
+    image3D[:,:,2] = image
+
+    circles_mask = np.zeros(mask.shape)
+
+    colors = mcp.gen_color(cmap="rainbow",n=10)
     # Add the sholl circles
-    for rad in radius:
-        cv2.circle(image, center=(cent_y, cent_x), radius=rad, color=(255,215,0), thickness=1)
+    for i, rad in enumerate(radius):
+        cv2.circle(image3D, center=(cent_y, cent_x), radius=rad, color=ImageColor.getcolor(colors[i], "RGB"), thickness=1)
+        cv2.circle(circles_mask, center=(cent_y, cent_x), radius=rad, color=(i+1)*2, thickness=1)
     
-    plt.figure(frameon=False)
-    plt.imshow(image, cmap='gray')#, aspect='auto')
-    # Add the center
-    plt.plot(cent_y, cent_x, marker="o", mec='mediumblue', markersize=3, color="deepskyblue")
-    plt.axis('off')
-    plt.savefig(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name.replace(".tif", ".png")), dpi=300, bbox_inches='tight', pad_inches=0)
-    #plt.show()
-    plt.close()
+    cv2.circle(image3D, center=(cent_y, cent_x), radius=1, color=(0,100,255), thickness=1)
+    cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
+    
+    with open(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".csv"), "w") as file:
+        writer = csv.writer(file)
+        writer.writerow(['circle', 'num intersections'])
+    
+    intersections = mask + circles_mask
+    intersections[intersections == 1] = 0
+    for i in range(0,100,2):
+        intersections[intersections == i] = 0
+    for i, col in enumerate(np.unique(intersections)):
+        if col != 0:
+            i_mask = np.zeros(intersections.shape, dtype=np.uint8)
+            i_mask[intersections==col] = 1
+            contours, _ = cv2.findContours(i_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            with open(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".csv"), "a") as file:
+                writer = csv.writer(file)
+                writer.writerow([i, len(contours)])
+
+    print("Analysis saved in "+str(output_path))
+    msg = QMessageBox() 
+    msg.setIcon(QMessageBox.Information)
+    msg.setText("Analysis saved!")
+    msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+    msg.exec_()
 
 
 

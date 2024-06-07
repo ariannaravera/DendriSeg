@@ -31,7 +31,7 @@ Replace code below according to your needs.
 from typing import TYPE_CHECKING
 
 from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit
-from qtpy.QtWidgets import QFileDialog, QFrame
+from qtpy.QtWidgets import QFileDialog
 import os
 import numpy as np
 from .functions import open_lif, segment, crop, open_file, sholl_analysis
@@ -183,8 +183,6 @@ class ImageSegmentation(Container):
         else:
             output_path = os.path.dirname(image_layer.source.path)
         tifffile.imwrite(os.path.join(output_path, os.path.splitext(os.path.basename(image_layer.source.path))[0]+"_mask.tif"), self.mask)
-            
-
 
     def _add_folder(self):
         # Add the selected mask as input
@@ -210,7 +208,6 @@ class ImageSegmentation(Container):
         roi_image = roi_layer.to_labels(image.shape)
         roi_ids = list(np.unique(roi_image))
         roi_ids.remove(0)
-        print("Cropping the "+str(len(roi_ids))+" ROI area(s) drawn")
 
         image_path = image_layer.source.path
         image_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -226,6 +223,7 @@ class ShollAnalysis(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._viewer = viewer
+        self.scaledefaultvalue = 1
 
         self.label1 = Label(value='Step 1: Open the cropped image')
         # Select file
@@ -236,14 +234,18 @@ class ShollAnalysis(Container):
 
         self.label2 = Label(value='Step 2: Manually clean the mask')
 
-        self.label3 = Label(value='Step 3: Create shape layer with a dot')
+        self.label3 = Label(value='Step 3: Set scale [px/um]')
+        # Select file
+        self.scale = LineEdit(value=self.scaledefaultvalue)
+
+        self.label4 = Label(value='Step 4: Create shape layer with a dot')
         # Button to create Shape layer
         self.btn_center = PushButton(value=True, text='Create "Neuron center" layer')
         self.btn_center.clicked.connect(self._on_click_centerlayer)
 
-        self.label3 = Label(value='Step 4: Move the dot over the neuron center')
+        self.label5 = Label(value='Step 5: Move the dot over the neuron center')
 
-        self.label4 = Label(value='Step 5: perform Sholl Analysis')
+        self.label6 = Label(value='Step 6: perform Sholl Analysis')
         # Button to create Shape layer
         self.btn_sholl = PushButton(value=True, text='Perform analysis')
         self.btn_sholl.clicked.connect(self._on_click_sholl)
@@ -267,8 +269,11 @@ class ShollAnalysis(Container):
                 self.btn_openfile,
                 self.label2,
                 self.label3,
-                self.btn_center,
+                self.scale,
                 self.label4,
+                self.btn_center,
+                self.label5,
+                self.label6,
                 self.btn_sholl
             ]
         )
@@ -276,25 +281,29 @@ class ShollAnalysis(Container):
     def _on_click_openfile(self):
         self.file_path = self.file_layer.value
         name, image, mask = open_file(str(self.file_path))
-        self.image_name = name.split('_image_crop')[0]
+        self.image_name = name.split('.tif')[0]
         mask_name = self.image_name+'_mask'
         self._viewer.add_image(image, name=self.image_name)
         self._viewer.add_labels(mask.astype('uint8'), name=mask_name)
         self.image_layer = self._viewer.layers[self.image_name]
         self.mask_layer = self._viewer.layers[mask_name]
+        if 'scale' in self.image_name:
+            scale = str(self.image_name.split('_ROI')[0].split('scale=')[1]).replace('+','.')
+            self.scaledefaultvalue = scale
+            self.scale.value = self.scaledefaultvalue
     
     def _on_click_centerlayer(self):
         self.center_layer = self._viewer.add_shapes(name="Neuron center")
         ellipse = np.array([[2, 2], [2, 2]])
         self.center_layer.add_ellipses(ellipse, edge_width=1, edge_color='royalblue', face_color='blue')
         
-
     def _on_click_sholl(self):
         center_layer = self.center_layer
         image_layer = self.image_layer
         mask_layer = self.mask_layer
-        if image_layer is None or mask_layer is None or center_layer is None:
+        scale = self.scale.value
+        if image_layer is None or mask_layer is None or center_layer is None or scale is None:
             print("Set correctly all the layers before performing the analysis")
             return
         center = center_layer.to_labels(image_layer.data.shape)
-        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data)
+        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data, float(scale))
