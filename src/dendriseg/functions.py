@@ -66,7 +66,10 @@ def workflowneu2(image):
     image_T2CM = cv2.medianBlur(image_T2C,3)
     image_T2MCO = morphology.area_opening(image_T2CM, area_threshold=5, connectivity=3)
 
-    image_th = th+image_T2MCO
+    if np.sum(image_T2MCO) < int(np.sum(image)/50):
+        image_th = th+image_T2MCO
+    else:
+        image_th = th
     image_th[image_th>0] = 1
     median = cv2.medianBlur(image_th,3)
 
@@ -79,25 +82,6 @@ def segment(image):
         blur = cle.gaussian_blur(image, None, 1.0, 1.0, 1.0)
         # Percentile filter
         filtered = nsbatwm.percentile_filter(blur, 0.0, 0.5)
-
-        """# Find neuron center
-        center_filtered = filtered.copy().astype('uint8')
-        center_filtered[center_filtered < 250] = 0
-        center_filtered[center_filtered != 0] = 1
-        cnts = cv2.findContours(center_filtered, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-        max_area = 0
-        max_x = 0
-        max_y = 0
-        for c in cnts:
-            x,y,w,h = cv2.boundingRect(c)
-            mask = np.zeros(center_filtered.shape, dtype=np.uint8)
-            cv2.fillPoly(mask, [c], 1)
-            pixels = cv2.countNonZero(mask)
-            if pixels > max_area:
-                max_area = pixels
-                max_x = np.average([x, x+w])
-                max_y = np.average([y, y+h])"""
-
         # Contrast when needed
         if np.average(filtered) < 20:
             filtered = cv2.convertScaleAbs(filtered, alpha=2, beta=0) #alpha=contrast
@@ -105,11 +89,12 @@ def segment(image):
         filtered = filtered.astype('uint8')
         
         mask = workflowneu2(filtered)
+
         msg = QMessageBox() 
         msg.setIcon(QMessageBox.Information)
         msg.setText("Mask created!")
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-        msg.exec_() 
+        msg.exec_()
 
         return mask
     except:
@@ -217,4 +202,10 @@ if __name__ == "__main__":
     """img = tifffile.imread(data_path)
     mask = segment(img)
     tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)"""
-    open_lif('/Users/aravera/Documents/DNF_Bagni/Giorgia/data/new_data/40x WT GFP DIV8 210524.lif', '')
+    img = tifffile.imread('/Users/aravera/Downloads/MAX_40x KO GFP DIV5 200524.lif - KO GFP.tif')
+    #'/Users/aravera/Downloads/MAX_40x KO GFP DIV5 200524.lif - KO GFP.tif')
+    #'/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
+    
+    img1 = tifffile.imread('/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
+    segment(img1)
+    segment(img)
