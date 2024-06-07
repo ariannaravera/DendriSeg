@@ -204,12 +204,12 @@ class ImageSegmentation(Container):
     def _on_click_add(self):
         # radius = 100 -> diameter = 200
         if 'scale' in self.name:
-            scale = (str(self.name).split('_ROI')[0].split('scale=')[1]).replace('+','.')
+            scale = (str(self.name).split('_ROI')[0].split('scale=')[1].split('_')[0]).replace('+','.')
             self.scaledefaultvalue = scale
             self.scale.value = self.scaledefaultvalue
             radius = int(scale*100)
         else:
-            radius = int(int(self.scale.value)*100)
+            radius = int(float(self.scale.value)*100)
         
         ellipse = np.array([[radius, radius], [radius, radius]]) # center, radii(= 2 radius of the ellipse, must be the same for a circle)
         self.shapes_layer.add_ellipses(ellipse, edge_width=5,edge_color='coral', face_color='royalblue')
