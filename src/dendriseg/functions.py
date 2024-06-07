@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QMessageBox
 from mycolorpy import colorlist as mcp
 from PIL import ImageColor
 import csv
+from scipy import ndimage
 
 data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
 res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
@@ -56,20 +57,31 @@ def workflowneu2(image):
     image_C = nsitk.curvature_flow_denoise(image_sgb, 1.0, 2)
     # threshold huang
     image_T2 = nsitk.threshold_huang(image_C)
-
-    """image_T1M = cv2.medianBlur(image_T1,3)
-    image_T1MC = cv2.morphologyEx(image_T1M, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
-    image_T1MCO = morphology.area_opening(image_T1MC, area_threshold=5, connectivity=3)
-    image_T1MCOO = morphology.area_opening(image_T1MCO, area_threshold=15, connectivity=6)"""
-
     image_T2C = cv2.morphologyEx(image_T2, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
     image_T2CM = cv2.medianBlur(image_T2C,3)
     image_T2MCO = morphology.area_opening(image_T2CM, area_threshold=5, connectivity=3)
 
-    if np.sum(image_T2MCO) < int(np.sum(image)/50):
-        image_th = th+image_T2MCO
-    else:
-        image_th = th
+    if np.sum(image_T2MCO) > int(np.sum(image)/50):
+        image_M1 = ndimage.median_filter(image, size=10)
+        # laplacian of gaussian
+        image_L = ncle._napari_cle_functions.laplacian_of_gaussian(image_M1, 0.0, 0.0, 0.0)
+        # gaussian blur
+        image_gb = cle.gaussian_blur(image_L, None, 1.0, 1.0, 0.0)
+        # subtract gaussian background
+        image_sgb = cle.subtract_gaussian_background(image_gb, None, 10.0, 10.0, 0.0)
+        # curvature flow denoise
+        image_C = nsitk.curvature_flow_denoise(image_sgb, 1.0, 2)
+        # threshold huang
+        image_T2 = nsitk.threshold_huang(image_C)
+        image_T2C = cv2.morphologyEx(image_T2, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (3,3)))
+        image_T2CM = cv2.medianBlur(image_T2C,3)
+        image_T2MCO = morphology.area_opening(image_T2CM, area_threshold=5, connectivity=3)
+
+
+    #if np.sum(image_T2MCO) < int(np.sum(image)/50):
+    image_th = th+image_T2MCO
+    #else:
+    #    image_th = th
     image_th[image_th>0] = 1
     median = cv2.medianBlur(image_th,3)
 
@@ -207,5 +219,5 @@ if __name__ == "__main__":
     #'/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
     
     img1 = tifffile.imread('/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
-    segment(img1)
+    #segment(img1)
     segment(img)
