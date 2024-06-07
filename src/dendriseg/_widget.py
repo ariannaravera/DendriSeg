@@ -90,6 +90,9 @@ class ImageSegmentation(Container):
     def __init__(self, viewer: "napari.viewer.Viewer"):
         super().__init__()
         self._viewer = viewer
+        self.name = ''
+        self.scaledefaultvalue = 1
+
         self.label1 = Label(value='Step 1: Open your tif image')
         self.label2 = Label(value='Step 2: Define the output folder')
         # Define output directory
@@ -109,15 +112,19 @@ class ImageSegmentation(Container):
         self.save_btn = PushButton(value=True, text='Save mask')
         self.save_btn.clicked.connect(self._on_click_save)
 
+        self.labelscale = Label(value='Step 4: Set scale [px/um] ONLY if it is not saved in the image name')
+        # Select file
+        self.scale = LineEdit(value=self.scaledefaultvalue)
+
         # Button to create Shape layer
-        self.label4 = Label(value='Step 4: Create your ROIs')
+        self.label4 = Label(value='Step 5: Create your ROIs')
         self.btn_create = PushButton(value=True, text='Create ROIs layer')
         self.btn_create.clicked.connect(self._on_click_create)
         # Button to add ellipse to Shape layer
         self.btn_add = PushButton(value=True, text='Add ROI')
         self.btn_add.clicked.connect(self._on_click_add)
 
-        self.label5 = Label(value='Step 5: Crop and save the ROIs areas')
+        self.label5 = Label(value='Step 6: Crop and save the ROIs areas')
 
         # Select Shape and image layers
         self._image_layer_combo1 = create_widget(
@@ -144,6 +151,8 @@ class ImageSegmentation(Container):
                 self._image_layer_combo,
                 self.segment_btn,
                 self.save_btn,
+                self.labelscale,
+                self.scale,
                 self.label4,
                 self.btn_create,
                 self.btn_add,
@@ -162,13 +171,13 @@ class ImageSegmentation(Container):
             return
 
         image = np.asarray(image_layer.data)
-        name = image_layer.name + "_mask"
+        self.name = image_layer.name + "_mask"
         self.mask = segment(image)
         if self.mask is not None:
-            if name in self._viewer.layers:
-                self._viewer.layers[name].data = self.mask
+            if self.name in self._viewer.layers:
+                self._viewer.layers[self.name].data = self.mask
             else:
-                self._viewer.add_labels(self.mask, name=name)
+                self._viewer.add_labels(self.mask, name=self.name)
     
     def _on_click_save(self):
         image_layer = self._image_layer_combo.value
@@ -193,7 +202,16 @@ class ImageSegmentation(Container):
         self._on_click_add()
     
     def _on_click_add(self):
-        ellipse = np.array([[100, 100], [100, 100]])
+        # radius = 100 -> diameter = 200
+        if 'scale' in self.name:
+            scale = (str(self.name).split('_ROI')[0].split('scale=')[1]).replace('+','.')
+            self.scaledefaultvalue = scale
+            self.scale.value = self.scaledefaultvalue
+            radius = int(scale*100)
+        else:
+            radius = int(int(self.scale.value)*100)
+        
+        ellipse = np.array([[radius, radius], [radius, radius]]) # center, radii(= 2 radius of the ellipse, must be the same for a circle)
         self.shapes_layer.add_ellipses(ellipse, edge_width=5,edge_color='coral', face_color='royalblue')
     
     def _on_click_crop(self):
@@ -235,7 +253,6 @@ class ShollAnalysis(Container):
         self.label2 = Label(value='Step 2: Manually clean the mask')
 
         self.label3 = Label(value='Step 3: Set scale [px/um]')
-        # Select file
         self.scale = LineEdit(value=self.scaledefaultvalue)
 
         self.label4 = Label(value='Step 4: Create shape layer with a dot')

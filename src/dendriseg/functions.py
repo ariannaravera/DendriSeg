@@ -169,8 +169,8 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     cent_x = int(np.average(mass_x))
     cent_y = int(np.average(mass_y))
 
-    # radius = 10um x 10 times -> we need to scale um to pixel and then we define the range: from 10 to 200 (it is enough for all the images) with step 10
-    radius = np.arange(int(scale*10), int(scale*100), int(scale*10))
+    # radius = 5um x 10 times -> we need to scale um to pixel and then we define the range: from 5 to 100 (it is enough for all the images) with step 20
+    radius = np.arange(int(scale*5), int(scale*100), int(scale*5))
     image3D = np.zeros((image.shape[0], image.shape[1],3))
     image3D[:,:,0] = image
     image3D[:,:,1] = image
