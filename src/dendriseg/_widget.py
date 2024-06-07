@@ -207,7 +207,7 @@ class ImageSegmentation(Container):
             scale = (str(self.name).split('_ROI')[0].split('scale=')[1].split('_')[0]).replace('+','.')
             self.scaledefaultvalue = scale
             self.scale.value = self.scaledefaultvalue
-            radius = int(scale*100)
+            radius = int(float(scale)*100)
         else:
             radius = int(float(self.scale.value)*100)
         
