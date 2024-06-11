@@ -113,7 +113,7 @@ def segment(image):
         return None
 
 
-def crop(image, image_mask, roi_ids, roi_image, output_path, image_name, scale):
+def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
     cropped_areas = []
     print("Cropping the "+str(len(roi_ids))+" ROIs drawn in "+output_path)
     for roi_id in roi_ids:
