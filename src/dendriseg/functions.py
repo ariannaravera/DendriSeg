@@ -130,7 +130,7 @@ def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
         cropped_area[1] = cropped_image_mask
         cropped_area[2] = cropped_rointersection_mask
         cropped_areas.append(cropped_area)
-        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area, metadata={'axes': 'CYX'}, imagej=True)
+        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area, metadata={'axes': 'CYX'})
     msg = QMessageBox() 
     msg.setIcon(QMessageBox.Information)
     msg.setText("ROIs cropped and saved!")
@@ -199,9 +199,7 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
         if col != 0:
             intersection_mask = np.zeros(intersections.shape, dtype=np.uint8)
             intersection_mask[intersections==col] = 1
-
             contours, _ = cv2.findContours(intersection_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
             worksheet.write(row, 0, i)
             worksheet.write(row, 1, len(contours))
             row += 1
