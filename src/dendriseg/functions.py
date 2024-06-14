@@ -130,7 +130,7 @@ def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
         cropped_area[1] = cropped_image_mask
         cropped_area[2] = cropped_rointersection_mask
         cropped_areas.append(cropped_area)
-        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area)
+        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area, metadata={'axes': 'CYX'}, imagej=True)
     msg = QMessageBox() 
     msg.setIcon(QMessageBox.Information)
     msg.setText("ROIs cropped and saved!")
@@ -167,10 +167,13 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
 
     # radius = 5um x 10 times -> we need to scale um to pixel and then we define the range: from 5 to 100 (it is enough for all the images) with step 20
     radius = np.arange(int(scale*5), int(scale*100), int(scale*5))
+    # Default for cv2 is BGR not RGB !
     image3D = np.zeros((image.shape[0], image.shape[1],3))
     image3D[:,:,0] = image
     image3D[:,:,1] = image
     image3D[:,:,2] = image
+    image3D[:,:,2] += mask*50
+    image3D[image3D[:,:,2] > 255 ,2] =255
 
     circles_mask = np.zeros(mask.shape)
 
@@ -203,11 +206,11 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
             worksheet.write(row, 1, len(contours))
             row += 1
             
-            # Intersections' spots (in light blue)
+            # Intersections' spots
             for c in contours:
                 meanx = np.median([i[0][0] for i in c])
                 meany = np.median([i[0][1] for i in c])
-                cv2.circle(image3D, (int(meanx),int(meany)), 2, (0, 153, 255), -1)
+                cv2.circle(image3D, (int(meanx),int(meany)), 2, colors[i-1], -1)
 
     cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
     workbook.close()
@@ -220,68 +223,8 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     msg.exec_()
 
 
-def sholl_analysis_test(imagename):
-    im = tifffile.imread(imagename)
-    image = im[0]
-    mask = im[1]
-    
-    mass_x, mass_y = 95, 115
-    cent_y = int(np.average(mass_y))
-    cent_x = int(np.average(mass_x))
-
-    # radius = 5um x 10 times -> we need to scale um to pixel and then we define the range: from 5 to 100 (it is enough for all the images) with step 20
-    radius = np.arange(int(4*5), int(4*100), int(4*5))
-    image3D = np.zeros((image.shape[0], image.shape[1],3))
-    image3D[:,:,0] = image
-    image3D[:,:,1] = image
-    image3D[:,:,2] = image
-
-    circles_mask = np.zeros(mask.shape)
-
-    colors = mcp.gen_color(cmap="rainbow", n=20)
-    # Add the sholl circles
-    for i, rad in enumerate(radius):
-        cv2.circle(image3D, center=(cent_x, cent_y), radius=rad, color=ImageColor.getcolor(colors[i], "RGB"), thickness=1)
-        cv2.circle(circles_mask, center=(cent_x, cent_y), radius=rad, color=(i+1)*2, thickness=1)
-    
-    cv2.circle(image3D, center=(cent_x, cent_y), radius=1, color=(0,100,255), thickness=1)
-    
-    workbook = xlsxwriter.Workbook(os.path.join(res_path, "sholl_prova.xlsx"))
-    worksheet = workbook.add_worksheet()
-    worksheet.write(0, 0, 'circle id')
-    worksheet.write(0, 1, 'intersections')
-    row = 1
-    
-    intersections = mask + circles_mask
-    intersections[intersections == 1] = 0
-
-    for i in range(0,100,2):
-        intersections[intersections == i] = 0
-
-    for i, col in enumerate(np.unique(intersections)):
-        if col != 0:
-            intersection_mask = np.zeros(intersections.shape, dtype=np.uint8)
-            intersection_mask[intersections==col] = 1
-            
-            contours, _ = cv2.findContours(intersection_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            worksheet.write(row, 0, i)
-            worksheet.write(row, 1, len(contours))
-            row += 1
-
-            for c in contours:
-                meanx = np.median([i[0][0] for i in c])
-                meany = np.median([i[0][1] for i in c])
-                cv2.circle(intersection_mask, (int(meanx),int(meany)), 1, 2, -1)
-                
-            plt.imshow(intersection_mask)
-            plt.show()
-
-    #cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
-    workbook.close()
-
-
-
 if __name__ == "__main__":
+    pass
     """img = tifffile.imread(data_path)
     mask = segment(img)
     tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)"""
