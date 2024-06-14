@@ -175,7 +175,7 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
 
     circles_mask = np.zeros(mask.shape)
 
-    colors = mcp.gen_color(cmap="rainbow",n=10)
+    colors = mcp.gen_color(cmap="rainbow", n=20)
     # Add the sholl circles
     for i, rad in enumerate(radius):
         cv2.circle(image3D, center=(cent_y, cent_x), radius=rad, color=ImageColor.getcolor(colors[i], "RGB"), thickness=1)
