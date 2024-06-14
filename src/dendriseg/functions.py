@@ -179,8 +179,8 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     for i, rad in enumerate(radius):
         cv2.circle(image3D, center=(cent_x, cent_y), radius=rad, color=ImageColor.getcolor(colors[i], "RGB"), thickness=1)
         cv2.circle(circles_mask, center=(cent_x, cent_y), radius=rad, color=(i+1)*2, thickness=1)
-    
-    cv2.circle(image3D, center=(cent_x, cent_y), radius=1, color=(0,100,255), thickness=1)
+    # Center
+    cv2.circle(image3D, center=(cent_x, cent_y), radius=1, color=(0, 204, 0), thickness=1)
     
     workbook = xlsxwriter.Workbook(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".xlsx"))
     worksheet = workbook.add_worksheet()
@@ -202,11 +202,12 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
             worksheet.write(row, 0, i)
             worksheet.write(row, 1, len(contours))
             row += 1
-
+            
+            # Intersections' spots (in light blue)
             for c in contours:
                 meanx = np.median([i[0][0] for i in c])
                 meany = np.median([i[0][1] for i in c])
-                cv2.circle(image3D, (int(meanx),int(meany)), 1, col, -1)
+                cv2.circle(image3D, (int(meanx),int(meany)), 2, (0, 153, 255), -1)
 
     cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
     workbook.close()
