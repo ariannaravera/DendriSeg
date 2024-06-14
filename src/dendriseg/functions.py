@@ -16,7 +16,7 @@ import xlsxwriter
 from scipy import ndimage
 
 data_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/data/NeuroniDIV19_40xtiles.tif"
-res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results23052024"
+res_path = "/Users/aravera/Documents/DNF_Bagni/Giorgia/results_test"
 
 
 def open_lif(file_path, saving_dir):
@@ -157,6 +157,7 @@ def open_file(file_path):
 
 
 def sholl_analysis(output_path, name, center, image, mask, scale):
+    print(output_path, name, center, image, mask, scale)
     if len(list(np.unique(center))) != 2:
         print('WARNING! Select only one center')
         return
@@ -186,8 +187,8 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     
     workbook = xlsxwriter.Workbook(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".xlsx"))
     worksheet = workbook.add_worksheet()
-    worksheet.write(row, 0, 'circle id')
-    worksheet.write(row, 1, 'intersections')
+    worksheet.write(0, 0, 'circle id')
+    worksheet.write(0, 1, 'intersections')
     row = 1
     
     intersections = mask + circles_mask
@@ -217,10 +218,14 @@ if __name__ == "__main__":
     """img = tifffile.imread(data_path)
     mask = segment(img)
     tifffile.imwrite(os.path.join(res_path, 'NeuroniDIV19_40xtiles_mask.tif'), mask)"""
-    img = tifffile.imread('/Users/aravera/Downloads/MAX_40x KO GFP DIV5 200524.lif - KO GFP.tif')
+
+    #img = tifffile.imread('/Users/aravera/Downloads/MAX_40x KO GFP DIV5 200524.lif - KO GFP.tif')
     #'/Users/aravera/Downloads/MAX_40x KO GFP DIV5 200524.lif - KO GFP.tif')
     #'/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
-    
-    img1 = tifffile.imread('/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
+    #segment(img)
+
+    #img1 = tifffile.imread('/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/data/new_data/extracted/40x WT GFP DIV8 210524_img1_ch0_scale=3+52.tif')
     #segment(img1)
-    segment(img)
+    
+    img = tifffile.imread('/Users/aravera/Documents/PROJECTS/DNF_Bagni/Giorgia/results/new_results/40x WT GFP DIV8 210524_img1_ch2_scale=3+52_ROI1.tif')
+    sholl_analysis(res_path, '40x WT GFP DIV8 210524_img1_ch2_scale=3+52_ROI1', center, image, mask, scale)
