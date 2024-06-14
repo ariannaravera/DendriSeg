@@ -184,11 +184,11 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     cv2.circle(image3D, center=(cent_y, cent_x), radius=1, color=(0,100,255), thickness=1)
     cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
     
-    """with open(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".csv"), "w") as file:
-        writer = csv.writer(file)
-        writer.writerow(['circle', 'num intersections'])"""
     workbook = xlsxwriter.Workbook(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".xlsx"))
     worksheet = workbook.add_worksheet()
+    worksheet.write(row, 0, 'circle id')
+    worksheet.write(row, 1, 'intersections')
+    row = 1
     
     intersections = mask + circles_mask
     intersections[intersections == 1] = 0
@@ -199,10 +199,9 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
             i_mask = np.zeros(intersections.shape, dtype=np.uint8)
             i_mask[intersections==col] = 1
             contours, _ = cv2.findContours(i_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            """with open(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".csv"), "a") as file:
-                writer = csv.writer(file)
-                writer.writerow([i, len(contours)])"""
-            worksheet.write(i, len(contours))
+            worksheet.write(row, 0, i)
+            worksheet.write(row, 1, len(contours))
+            row += 1
     worksheet.close()
 
     print("Analysis saved in "+str(output_path))
