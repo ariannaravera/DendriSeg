@@ -125,12 +125,12 @@ def crop(image, image_mask, roi_ids, roi_image, output_path, image_name):
         cropped_image = masked_img[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
         cropped_image_mask = masked_image_mask[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
         cropped_rointersection_mask = rointersection_mask[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
-        cropped_area = np.zeros((3, cropped_image.shape[0], cropped_image.shape[1]))
+        cropped_area = np.zeros((3, cropped_image.shape[0], cropped_image.shape[1]), dtype=np.uint8)
         cropped_area[0] = cropped_image
         cropped_area[1] = cropped_image_mask
         cropped_area[2] = cropped_rointersection_mask
         cropped_areas.append(cropped_area)
-        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area, metadata={'axes': 'CYX'})
+        tifffile.imwrite(os.path.join(output_path, image_name+'_ROI'+str(roi_id)+'.tif'), cropped_area, metadata={'axes': 'CYX'}, imagej=True)
     msg = QMessageBox() 
     msg.setIcon(QMessageBox.Information)
     msg.setText("ROIs cropped and saved!")
@@ -208,7 +208,7 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
             for c in contours:
                 meanx = np.median([i[0][0] for i in c])
                 meany = np.median([i[0][1] for i in c])
-                cv2.circle(image3D, (int(meanx),int(meany)), 2, colors[i-1], -1)
+                cv2.circle(image3D, (int(meanx),int(meany)), 2, ImageColor.getcolor(colors[i-1], "RGB"), -1)
 
     cv2.imwrite(os.path.join(os.path.dirname(str(output_path)), "sholl_"+name+".jpg"), image3D)
     workbook.close()
