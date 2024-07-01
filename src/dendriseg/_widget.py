@@ -327,9 +327,10 @@ class ShollAnalysis(Container):
     
     def _on_click_radiobutton(self):
         self.radius = 5
-        radioButton = self.sender()
-        if radioButton.isChecked():
-            self.radius = radioButton.country
+        if self.b1.clicked:
+            self.radius = 5
+        if self.b2.clicked:
+            self.radius = 15
         
     def _on_click_sholl(self):
         center_layer = self.center_layer
