@@ -30,7 +30,7 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit, RadioButton
+from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit, ComboBox
 from qtpy.QtWidgets import QFileDialog
 import os
 import numpy as np
@@ -263,12 +263,7 @@ class ShollAnalysis(Container):
         self.label5 = Label(value='Step 5: Move the dot over the neuron center')
 
         self.label6 = Label(value='Step 6: Choose the starting diameter (micron)')
-        self.b1 = RadioButton(value=5, text="5")
-        self.b1.value = 5
-        self.b1.changed(self._on_click_radiobutton)
-        self.b2 = RadioButton(value=15, text="15")
-        self.b2.value = 15
-        self.b2.changed(self._on_click_radiobutton)
+        self.combo = ComboBox(label='radius:', choices=[5,15])
 
         self.label7 = Label(value='Step 7: Perform Sholl Analysis')
         # Button to create Shape layer
@@ -299,8 +294,7 @@ class ShollAnalysis(Container):
                 self.btn_center,
                 self.label5,
                 self.label6,
-                self.b1,
-                self.b2,
+                self.combo,
                 self.label7,
                 self.btn_sholl
             ]
@@ -325,13 +319,6 @@ class ShollAnalysis(Container):
         ellipse = np.array([[2, 2], [2, 2]])
         self.center_layer.add_ellipses(ellipse, edge_width=1, edge_color='royalblue', face_color='blue')
     
-    def _on_click_radiobutton(self):
-        self.radius = 5
-        if self.b1.clicked:
-            self.radius = 5
-        if self.b2.clicked:
-            self.radius = 15
-        
     def _on_click_sholl(self):
         center_layer = self.center_layer
         image_layer = self.image_layer
@@ -341,4 +328,4 @@ class ShollAnalysis(Container):
             print("Set correctly all the layers before performing the analysis")
             return
         center = center_layer.to_labels(image_layer.data.shape)
-        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data, float(scale), self.radius)
+        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data, float(scale), self.combo.value)
