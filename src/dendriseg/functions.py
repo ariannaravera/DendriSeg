@@ -155,7 +155,7 @@ def open_file(file_path):
         return
 
 
-def sholl_analysis(output_path, name, center, image, mask, scale):
+def sholl_analysis(output_path, name, center, image, mask, scale, rad):
     if len(list(np.unique(center))) != 2:
         print('WARNING! Select only one center')
         return
@@ -166,7 +166,11 @@ def sholl_analysis(output_path, name, center, image, mask, scale):
     cent_x = int(np.average(mass_y))
 
     # radius = 5um x 10 times -> we need to scale um to pixel and then we define the range: from 5 to 100 (it is enough for all the images) with step 20
-    radius = np.arange(int(scale*15), int(scale*110), int(scale*5))
+    if rad == 15:
+        radius = np.arange(int(scale*15), int(scale*110), int(scale*5))
+    else:
+        radius = np.arange(int(scale*5), int(scale*100), int(scale*5))
+
     # Default for cv2 is BGR not RGB !
     image3D = np.zeros((image.shape[0], image.shape[1],3))
     image3D[:,:,0] = image

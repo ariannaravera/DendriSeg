@@ -30,7 +30,7 @@ Replace code below according to your needs.
 """
 from typing import TYPE_CHECKING
 
-from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit
+from magicgui.widgets import Container, create_widget, PushButton, Label, FileEdit, LineEdit, RadioButton
 from qtpy.QtWidgets import QFileDialog
 import os
 import numpy as np
@@ -262,7 +262,16 @@ class ShollAnalysis(Container):
 
         self.label5 = Label(value='Step 5: Move the dot over the neuron center')
 
-        self.label6 = Label(value='Step 6: perform Sholl Analysis')
+        self.label6 = Label(value='Step 6: Choose the starting diameter (micron)')
+        self.b1 = RadioButton("5")
+        self.b1.value = 5
+        self.b1.setChecked(True)
+        self.b1.toggled.connect(self._on_click_radiobutton)
+        self.b2 = RadioButton("15")
+        self.b2.value = 15
+        self.b2.toggled.connect(self._on_click_radiobutton)
+
+        self.label7 = Label(value='Step 7: Perform Sholl Analysis')
         # Button to create Shape layer
         self.btn_sholl = PushButton(value=True, text='Perform analysis')
         self.btn_sholl.clicked.connect(self._on_click_sholl)
@@ -291,6 +300,9 @@ class ShollAnalysis(Container):
                 self.btn_center,
                 self.label5,
                 self.label6,
+                self.b1,
+                self.b2,
+                self.label7,
                 self.btn_sholl
             ]
         )
@@ -313,6 +325,12 @@ class ShollAnalysis(Container):
         self.center_layer = self._viewer.add_shapes(name="Neuron center")
         ellipse = np.array([[2, 2], [2, 2]])
         self.center_layer.add_ellipses(ellipse, edge_width=1, edge_color='royalblue', face_color='blue')
+    
+    def _on_click_radiobutton(self):
+        self.radius = 5
+        radioButton = self.sender()
+        if radioButton.isChecked():
+            self.radius = radioButton.country
         
     def _on_click_sholl(self):
         center_layer = self.center_layer
@@ -323,4 +341,4 @@ class ShollAnalysis(Container):
             print("Set correctly all the layers before performing the analysis")
             return
         center = center_layer.to_labels(image_layer.data.shape)
-        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data, float(scale))
+        sholl_analysis(self.file_path, self.image_name, center, image_layer.data, mask_layer.data, float(scale), self.radius)
