@@ -263,11 +263,11 @@ class ShollAnalysis(Container):
         self.label5 = Label(value='Step 5: Move the dot over the neuron center')
 
         self.label6 = Label(value='Step 6: Choose the starting diameter (micron)')
-        self.b1 = RadioButton("5")
+        self.b1 = RadioButton(value=5, text="5")
         self.b1.value = 5
         self.b1.setChecked(True)
         self.b1.toggled.connect(self._on_click_radiobutton)
-        self.b2 = RadioButton("15")
+        self.b2 = RadioButton(value=15, text="15")
         self.b2.value = 15
         self.b2.toggled.connect(self._on_click_radiobutton)
 
